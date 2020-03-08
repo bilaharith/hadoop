@@ -26,8 +26,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Objects;
 
 import com.google.common.base.Preconditions;
+import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonParser;
 import org.codehaus.jackson.JsonToken;
@@ -87,7 +89,7 @@ public final class AzureADAuthenticator {
     Preconditions.checkNotNull(clientSecret, "clientSecret");
 
     QueryParams qp = new QueryParams();
-    qp.add("resource", RESOURCE_NAME);
+    setVersionSpecificReqParams(authEndpoint, qp);
     qp.add("grant_type", "client_credentials");
     qp.add("client_id", clientId);
     qp.add("client_secret", clientSecret);
@@ -117,7 +119,7 @@ public final class AzureADAuthenticator {
       boolean bypassCache) throws IOException {
     QueryParams qp = new QueryParams();
     qp.add("api-version", "2018-02-01");
-    qp.add("resource", RESOURCE_NAME);
+    setVersionSpecificReqParams(authEndpoint, qp);
 
     if (tenantGuid != null && tenantGuid.length() > 0) {
       authority = authority + tenantGuid;
@@ -164,6 +166,22 @@ public final class AzureADAuthenticator {
     return getTokenCall(authEndpoint, qp.serialize(), null, null);
   }
 
+  private static void setVersionSpecificReqParams(final String authEndpoint,
+      final QueryParams qp) {
+    Preconditions.checkArgument(!StringUtils.isBlank(authEndpoint),
+        "auth endpoint cannot be blank");
+    Preconditions.checkNotNull(qp);
+    final String[] urlParts = authEndpoint.split("/");
+    Preconditions.checkNotNull(urlParts);
+    final int versionIndex = 5;
+    Preconditions.checkElementIndex(versionIndex, urlParts.length);
+    final String version = urlParts[versionIndex];
+    if (version.startsWith("v2")) {
+      qp.add("scope", RESOURCE_NAME + ".default");
+    } else {
+      qp.add("resource", RESOURCE_NAME);
+    }
+  }
 
   /**
    * This exception class contains the http error code,

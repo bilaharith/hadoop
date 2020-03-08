@@ -34,6 +34,7 @@ public final class TestConfigurationKeys {
   public static final String FS_AZURE_BLOB_DATA_READER_CLIENT_ID = "fs.azure.account.oauth2.reader.client.id";
   public static final String FS_AZURE_BLOB_DATA_READER_CLIENT_SECRET = "fs.azure.account.oauth2.reader.client.secret";
 
+  public static final String FS_AZURE_BLOB_FS_CLIENT_ENVDPOINT = "fs.azure.account.oauth2.client.endpoint";
   public static final String FS_AZURE_BLOB_FS_CLIENT_ID = "fs.azure.account.oauth2.client.id";
   public static final String FS_AZURE_BLOB_FS_CLIENT_SECRET = "fs.azure.account.oauth2.client.secret";
 

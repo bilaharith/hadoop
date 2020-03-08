@@ -20,11 +20,15 @@ package org.apache.hadoop.fs.azurebfs;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.Map;
 
-import org.apache.hadoop.fs.azurebfs.constants.TestConfigurationKeys;
 import org.junit.Assume;
 import org.junit.Test;
+
+import org.apache.hadoop.fs.azurebfs.constants.TestConfigurationKeys;
+import org.apache.hadoop.fs.azurebfs.oauth2.AzureADAuthenticator;
+import org.apache.hadoop.fs.azurebfs.oauth2.AzureADToken;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -34,6 +38,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.azurebfs.contracts.exceptions.AbfsRestOperationException;
 import org.apache.hadoop.fs.azurebfs.contracts.services.AzureServiceErrorCode;
 import org.apache.hadoop.fs.azurebfs.services.AuthType;
+import org.mockito.internal.matchers.Null;
 
 import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.FS_AZURE_ACCOUNT_OAUTH_CLIENT_ID;
 import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.FS_AZURE_ACCOUNT_OAUTH_CLIENT_SECRET;
@@ -41,6 +46,12 @@ import static org.apache.hadoop.fs.azurebfs.constants.TestConfigurationKeys.FS_A
 import static org.apache.hadoop.fs.azurebfs.constants.TestConfigurationKeys.FS_AZURE_BLOB_DATA_CONTRIBUTOR_CLIENT_SECRET;
 import static org.apache.hadoop.fs.azurebfs.constants.TestConfigurationKeys.FS_AZURE_BLOB_DATA_READER_CLIENT_ID;
 import static org.apache.hadoop.fs.azurebfs.constants.TestConfigurationKeys.FS_AZURE_BLOB_DATA_READER_CLIENT_SECRET;
+
+import static org.exparity.hamcrest.date.DateMatchers.after;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.Matchers.blankString;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNot.not;
 
 /**
  * Test Azure Oauth with Blob Data contributor role and Blob Data Reader role.
@@ -52,6 +63,9 @@ public class ITestAzureBlobFileSystemOauth extends AbstractAbfsIntegrationTest{
   private static final Path FILE_PATH = new Path("/testFile");
   private static final Path EXISTED_FILE_PATH = new Path("/existedFile");
   private static final Path EXISTED_FOLDER_PATH = new Path("/existedFolder");
+
+  private String clientId;
+  private String secret;
 
   public ITestAzureBlobFileSystemOauth() throws Exception {
     Assume.assumeTrue(this.getAuthType() == AuthType.OAuth);
@@ -148,6 +162,60 @@ public class ITestAzureBlobFileSystemOauth extends AbstractAbfsIntegrationTest{
       assertEquals(AzureServiceErrorCode.AUTHORIZATION_PERMISSION_MISS_MATCH, e.getErrorCode());
     }
 
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testAuthEndPointSupportWithNullEndPoint() throws IOException {
+    assumeConfs();
+    AzureADAuthenticator.getTokenUsingClientCreds(null, clientId, secret);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testAuthEndPointSupportWithEmptyEndPoint() throws IOException {
+    assumeConfs();
+    AzureADAuthenticator.getTokenUsingClientCreds("", clientId, secret);
+  }
+
+  @Test(expected = IndexOutOfBoundsException.class)
+  public void testAuthEndPointSupportWithInvalidEndpoint() throws IOException {
+    assumeConfs();
+    AzureADAuthenticator.getTokenUsingClientCreds("//", clientId, secret);
+  }
+
+  @Test
+  public void testAuthEndPointSupportWithV1EndPoint() throws IOException {
+    testOAuthEndPoint("token");
+  }
+
+  @Test
+  public void testAuthEndPointSupportWithV2EndPoint() throws IOException {
+    testOAuthEndPoint("v2.0/token");
+  }
+
+  private void testOAuthEndPoint(String endpoitSuffix) throws IOException {
+    assumeConfs();
+    String v1Endpoint = getEndPoint(endpoitSuffix);
+    AzureADToken token = AzureADAuthenticator
+        .getTokenUsingClientCreds(v1Endpoint, clientId, secret);
+    assertThat(token, is(notNullValue()));
+    assertThat(token.getExpiry(), is(after(new Date())));
+    assertThat(token.getAccessToken(), is(not(blankString())));
+  }
+
+  private String getEndPoint(String suffix) {
+    String authEndpoint = this.getConfiguration()
+        .get(TestConfigurationKeys.FS_AZURE_BLOB_FS_CLIENT_ENVDPOINT);
+    int oauthStrIndex = authEndpoint.lastIndexOf("/oauth2/");
+    return authEndpoint.substring(0, oauthStrIndex) + "/oauth2/" + suffix;
+  }
+
+  private void assumeConfs() {
+    this.clientId = this.getConfiguration()
+        .get(TestConfigurationKeys.FS_AZURE_BLOB_FS_CLIENT_ID);
+    this.secret = this.getConfiguration()
+        .get(TestConfigurationKeys.FS_AZURE_BLOB_FS_CLIENT_SECRET);
+    Assume.assumeTrue("Client id not provided", clientId != null);
+    Assume.assumeTrue("Client secret not provided", secret != null);
   }
 
   private void prepareFiles() throws IOException {
