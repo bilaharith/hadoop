@@ -120,10 +120,15 @@ public class AbfsConfiguration{
       DefaultValue = AZURE_BLOCK_LOCATION_HOST_DEFAULT)
   private String azureBlockLocationHost;
 
-  @IntegerConfigurationValidatorAnnotation(ConfigurationKey = AZURE_CONCURRENT_CONNECTION_VALUE_OUT,
+  @IntegerConfigurationValidatorAnnotation(ConfigurationKey = AZURE_WRITE_CONCURRENCY_FACTOR,
       MinValue = 1,
-      DefaultValue = MAX_CONCURRENT_WRITE_THREADS)
-  private int maxConcurrentWriteThreads;
+      DefaultValue = DEFAULT_WRITE_CONCURRENCY_FACTOR)
+  private int writeConcurrencyFactor;
+
+  @IntegerConfigurationValidatorAnnotation(ConfigurationKey = AZURE_MAX_WRITE_MEM_USAGE_PERCENTAGE,
+      MinValue = 20,
+      DefaultValue = DEFAULT_MAX_AZURE_WRITE_MEM_USAGE_PERCENTAGE)
+  private int maxWriteMemoryUsagePercentage;
 
   @IntegerConfigurationValidatorAnnotation(ConfigurationKey = AZURE_LIST_MAX_RESULTS,
       MinValue = 1,
@@ -429,8 +434,12 @@ public class AbfsConfiguration{
     return this.azureBlockLocationHost;
   }
 
-  public int getMaxConcurrentWriteThreads() {
-    return this.maxConcurrentWriteThreads;
+  public int getWriteConcurrencyFactor() {
+    return this.writeConcurrencyFactor;
+  }
+
+  public int getMaxWriteMemoryUsagePercentage() {
+    return this.maxWriteMemoryUsagePercentage;
   }
 
   public int getMaxConcurrentReadThreads() {
