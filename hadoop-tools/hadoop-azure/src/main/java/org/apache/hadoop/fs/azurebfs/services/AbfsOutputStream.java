@@ -78,7 +78,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
    * blocks. After the data is sent to the service, the buffer is returned
    * back to the queue
    */
-  private static AbfsWriteBufferPool writeBufferPool;
+  private static AbfsBufferPool bufferPool;
 
   public AbfsOutputStream(
       final AbfsClient client,
@@ -120,7 +120,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
       return;
     }
     bufferSize = conf.getWriteBufferSize();
-    writeBufferPool = new AbfsWriteBufferPool(conf.getWriteBufferSize(),
+    bufferPool = new AbfsBufferPool(conf.getWriteBufferSize(),
         maxConcurrentThreadCount, conf.getMaxWriteMemoryUsagePercentage());
   }
 
@@ -315,7 +315,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
 
     final byte[] byteArray = buffer;
     final int bytesLength = bufferIndex;
-    buffer = writeBufferPool.get();
+    buffer = bufferPool.get();
     bufferIndex = 0;
     final long offset = position;
     position += bytesLength;
@@ -328,7 +328,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
           AbfsRestOperation op = client.append(path, offset, byteArray, 0,
                   bytesLength);
           perfInfo.registerResult(op.getResult());
-          writeBufferPool.release(byteArray);
+          bufferPool.release(byteArray);
           perfInfo.registerSuccess(true);
           return null;
         }
