@@ -126,7 +126,8 @@ public class AbfsConfiguration{
   private int writeConcurrencyFactor;
 
   @IntegerConfigurationValidatorAnnotation(ConfigurationKey = AZURE_MAX_WRITE_MEM_USAGE_PERCENTAGE,
-      MinValue = 20,
+      MinValue = MIN_VALUE_MAX_AZURE_WRITE_MEM_USAGE_PERCENTAGE,
+      MaxValue = MAX_VALUE_MAX_AZURE_WRITE_MEM_USAGE_PERCENTAGE,
       DefaultValue = DEFAULT_MAX_AZURE_WRITE_MEM_USAGE_PERCENTAGE)
   private int maxWriteMemoryUsagePercentage;
 
