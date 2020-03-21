@@ -107,6 +107,9 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
     maxConcurrentThreadCount =
         conf.getWriteConcurrencyFactor() * availableProcessors;
 
+    bufferPool = new AbfsByteBufferPool(bufferSize, maxConcurrentThreadCount,
+        conf.getMaxWriteMemoryUsagePercentage());
+
     ThreadFactory daemonThreadFactory = new ThreadFactory() {
       @Override
       public Thread newThread(Runnable runnable) {
