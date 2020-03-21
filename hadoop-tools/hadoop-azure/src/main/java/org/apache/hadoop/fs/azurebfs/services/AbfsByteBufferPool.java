@@ -117,22 +117,12 @@ public class AbfsByteBufferPool {
   }
 
   @VisibleForTesting
-  public int getNumBuffersInUse() {
-    return numBuffersInUse;
-  }
-
-  @VisibleForTesting
-  public void setNumBuffersInUse(int val) {
-    this.numBuffersInUse = val;
-  }
-
-  @VisibleForTesting
-  public int getMaxBuffersInUse() {
+  public synchronized int getMaxBuffersInUse() {
     return this.maxBuffersInUse;
   }
 
   @VisibleForTesting
-  public ArrayBlockingQueue<byte[]> getFreeBuffers() {
+  public synchronized ArrayBlockingQueue<byte[]> getFreeBuffers() {
     return freeBuffers;
   }
 }
