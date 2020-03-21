@@ -148,31 +148,32 @@ public class ITestAbfsByteBufferPool {
       int maxWriteMemUsagePercentage = (int) testData.get(i)[2];
       AbfsByteBufferPool pool = new AbfsByteBufferPool(bufferSize,
           maxConcurrentThreadCount, maxWriteMemUsagePercentage);
-      int expectedMaxBuffersInUse = calculateMaxBuffersInUse(bufferSize,
-          maxConcurrentThreadCount, maxWriteMemUsagePercentage);
-      double maxMemoryAllowedForPool =
-          Runtime.getRuntime().maxMemory() * maxWriteMemUsagePercentage / 100;
-      double bufferCountByMemory = maxMemoryAllowedForPool / bufferSize;
-      assertThat(pool.getMaxBuffersInUse()).describedAs("").isGreaterThan(1)
-          .describedAs("").isEqualTo(expectedMaxBuffersInUse).describedAs("")
-          .isLessThanOrEqualTo(
-              (int) Math.ceil(Math.max(2, bufferCountByMemory)));
-    }
-  }
 
-  private int calculateMaxBuffersInUse(int bufferSize,
-      int maxConcurrentThreadCount, int maxWriteMemUsagePercentage) {
-    double maxMemoryAllowedForPool =
-        Runtime.getRuntime().maxMemory() * maxWriteMemUsagePercentage / 100;
-    double bufferCountByMemory = maxMemoryAllowedForPool / bufferSize;
-    double bufferCountByConcurrency =
-        maxConcurrentThreadCount + Runtime.getRuntime().availableProcessors()
-            + 1;
-    int maxBuffersInUse = (int) Math
-        .ceil(Math.min(bufferCountByMemory, bufferCountByConcurrency));
-    if (maxBuffersInUse < 2) {
-      maxBuffersInUse = 2;
+      double maxMemoryAllowedForPoolMB =
+          Runtime.getRuntime().maxMemory() / (1024 * 1024)
+              * maxWriteMemUsagePercentage / 100;
+      double bufferCountByMemory = maxMemoryAllowedForPoolMB / bufferSize;
+      double bufferCountByConcurrency =
+          maxConcurrentThreadCount + Runtime.getRuntime().availableProcessors()
+              + 1;
+      int expectedMaxBuffersInUse = (int) Math
+          .ceil(Math.min(bufferCountByMemory, bufferCountByConcurrency));
+      if (expectedMaxBuffersInUse < 2) {
+        expectedMaxBuffersInUse = 2;
+      }
+
+      assertThat(pool.getMaxBuffersInUse())
+          .describedAs("Max buffers in use should be always greater than 1")
+          .isGreaterThan(1)
+          .describedAs("Max buffers in use should be equal to as expected")
+          .isEqualTo(expectedMaxBuffersInUse)
+          .describedAs("Max buffers in use should be <= number of "
+              + "buffers calculated by memory percentage")
+          .isLessThanOrEqualTo(
+          (int) Math.ceil(Math.max(2, bufferCountByMemory)))
+          .describedAs("Max buffers in use should <= number of buffers "
+              + "calculated by concurrency").isLessThanOrEqualTo(
+          (int) Math.ceil(Math.max(2, bufferCountByMemory)));
     }
-    return maxBuffersInUse;
   }
 }
