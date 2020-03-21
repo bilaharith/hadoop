@@ -39,7 +39,7 @@ public class AbfsByteBufferPool {
   /**
    * Count to track the buffers issued and yet to be returned.
    */
-  private int numBuffersInUse;
+  private AtomicInteger numBuffersInUse;
   /**
    * Maximum number of buffers that can be in use.
    */
@@ -67,11 +67,12 @@ public class AbfsByteBufferPool {
     Preconditions.checkArgument(maxConcurrentThreadCount > 0,
         "maxConcurrentThreadCount cannot be < 1");
     this.bufferSize = bufferSize;
-    this.numBuffersInUse = 0;
+    this.numBuffersInUse = new AtomicInteger(0);
     freeBuffers = new ArrayBlockingQueue<>(maxConcurrentThreadCount + 1);
 
     double maxMemoryAllowedForPoolInMBs =
-        Runtime.getRuntime().maxMemory()/(1024*1024) * maxWriteMemUsagePercentage / 100;
+        Runtime.getRuntime().maxMemory() / (1024 * 1024)
+            * maxWriteMemUsagePercentage / 100;
     double bufferCountByMemory = maxMemoryAllowedForPoolInMBs / bufferSize;
     double bufferCountByConcurrency =
         maxConcurrentThreadCount + Runtime.getRuntime().availableProcessors()
@@ -87,31 +88,31 @@ public class AbfsByteBufferPool {
    * @return byte[] from the pool if available otherwise new byte[] is returned.
    * Waits if pool is empty and already maximum number of buffers are in use.
    */
-  public synchronized byte[] get() {
+  public byte[] get() {
+    numBuffersInUse.incrementAndGet();
     byte[] byteArray = freeBuffers.poll();
-    if (byteArray == null) {
-      if (numBuffersInUse < maxBuffersInUse) {
-        byteArray = new byte[bufferSize];
-      } else {
-        try {
-          byteArray = freeBuffers.take();
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
-      }
+    if (byteArray != null) {
+      return byteArray;
     }
-    numBuffersInUse++;
-    return byteArray;
+    if (numBuffersInUse.get() <= maxBuffersInUse) {
+      return new byte[bufferSize];
+    }
+    try {
+      return freeBuffers.take();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return null;
+    }
   }
 
   /**
    * @param byteArray The buffer to be offered back to the pool.
    */
-  public synchronized void release(byte[] byteArray) {
-    Preconditions.checkArgument(byteArray.length==bufferSize,"Buffer size has"
-        + " to be %s", bufferSize);
-    if (--numBuffersInUse < 0) {
-      numBuffersInUse=0;
+  public void release(byte[] byteArray) {
+    Preconditions.checkArgument(byteArray.length == bufferSize,
+        "Buffer size has" + " to be %s", bufferSize);
+    if (numBuffersInUse.decrementAndGet() < 0) {
+      numBuffersInUse = new AtomicInteger(0);
     }
     freeBuffers.offer(byteArray);
   }

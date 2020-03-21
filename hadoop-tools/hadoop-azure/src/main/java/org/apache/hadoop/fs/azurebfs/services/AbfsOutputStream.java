@@ -66,7 +66,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
   private int bufferIndex;
   private static int maxConcurrentThreadCount;
 
-  private final ConcurrentLinkedDeque<WriteOperation> writeOperations;
+  private final ConcurrentLinkedDeque<WriteOperation> writeOperations = new ConcurrentLinkedDeque<>();
 
   private static ThreadPoolExecutor threadExecutor;
   /**
@@ -92,7 +92,6 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
     this.lastFlushOffset = 0;
     this.bufferIndex = 0;
     this.bufferSize = abfsConfiguration.getWriteBufferSize();
-    this.writeOperations = new ConcurrentLinkedDeque<>();
 
     init(abfsConfiguration);
     this.buffer = new byte[bufferSize];
