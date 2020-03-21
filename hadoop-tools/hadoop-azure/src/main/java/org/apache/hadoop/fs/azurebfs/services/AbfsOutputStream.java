@@ -305,7 +305,6 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
 
     final byte[] byteArray = buffer;
     final int bytesLength = bufferIndex;
-    buffer = bufferPool.get();
     bufferIndex = 0;
     final long offset = position;
     position += bytesLength;
@@ -325,6 +324,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
       }
     });
 
+    buffer = bufferPool.get();
     writeOperations.add(new WriteOperation(job, offset, bytesLength));
 
     // Try to shrink the queue
