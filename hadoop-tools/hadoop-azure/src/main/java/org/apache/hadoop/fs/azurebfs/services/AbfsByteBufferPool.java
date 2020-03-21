@@ -39,7 +39,7 @@ public class AbfsByteBufferPool {
   /**
    * Count to track the buffers issued and yet to be returned.
    */
-  private AtomicInteger numBuffersInUse;
+  private int numBuffersInUse;
   /**
    * Maximum number of buffers that can be in use.
    */
@@ -67,7 +67,7 @@ public class AbfsByteBufferPool {
     Preconditions.checkArgument(maxConcurrentThreadCount > 0,
         "maxConcurrentThreadCount cannot be < 1");
     this.bufferSize = bufferSize;
-    this.numBuffersInUse = new AtomicInteger(0);
+    this.numBuffersInUse = 0;
     freeBuffers = new ArrayBlockingQueue<>(maxConcurrentThreadCount + 1);
 
     double maxMemoryAllowedForPoolInMBs =
@@ -87,10 +87,10 @@ public class AbfsByteBufferPool {
    * @return byte[] from the pool if available otherwise new byte[] is returned.
    * Waits if pool is empty and already maximum number of buffers are in use.
    */
-  public byte[] get() {
+  public synchronized byte[] get() {
     byte[] byteArray = freeBuffers.poll();
     if (byteArray == null) {
-      if (numBuffersInUse.get() < maxBuffersInUse) {
+      if (numBuffersInUse < maxBuffersInUse) {
         byteArray = new byte[bufferSize];
       } else {
         try {
@@ -100,30 +100,30 @@ public class AbfsByteBufferPool {
         }
       }
     }
-    numBuffersInUse.incrementAndGet();
+    numBuffersInUse++;
     return byteArray;
   }
 
   /**
    * @param byteArray The buffer to be offered back to the pool.
    */
-  public void release(byte[] byteArray) {
+  public synchronized void release(byte[] byteArray) {
     Preconditions.checkArgument(byteArray.length==bufferSize,"Buffer size has"
         + " to be %s", bufferSize);
-    if (numBuffersInUse.decrementAndGet() < 0) {
-      numBuffersInUse.set(0);
+    if (--numBuffersInUse < 0) {
+      numBuffersInUse=0;
     }
     freeBuffers.offer(byteArray);
   }
 
   @VisibleForTesting
-  public AtomicInteger getNumBuffersInUse() {
+  public int getNumBuffersInUse() {
     return numBuffersInUse;
   }
 
   @VisibleForTesting
   public void setNumBuffersInUse(int val) {
-    this.numBuffersInUse = new AtomicInteger(val);
+    this.numBuffersInUse = val;
   }
 
   @VisibleForTesting
