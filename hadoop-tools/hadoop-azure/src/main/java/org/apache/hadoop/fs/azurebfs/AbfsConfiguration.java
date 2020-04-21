@@ -740,6 +740,11 @@ public class AbfsConfiguration{
     this.listMaxResults = listMaxResults;
   }
 
+  @VisibleForTesting
+  void setIsNamespaceEnabledAccount(String isNamespaceEnabledAccount) {
+    this.isNamespaceEnabledAccount = isNamespaceEnabledAccount;
+  }
+
   private String getTrimmedPasswordString(String key, String defaultValue) throws IOException {
     String value = getPasswordString(key);
     if (StringUtils.isBlank(value)) {
