@@ -51,6 +51,8 @@ import java.util.Set;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import org.apache.hadoop.fs.azurebfs.contracts.exceptions.TrileanConversionException;
+import org.apache.hadoop.fs.azurebfs.enums.Trilean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,8 +136,7 @@ public class AzureBlobFileSystemStore implements Closeable {
 
   private final AbfsConfiguration abfsConfiguration;
   private final Set<String> azureAtomicRenameDirSet;
-  private boolean isNamespaceEnabledSet;
-  private boolean isNamespaceEnabled;
+  private Trilean isNamespaceEnabled;
   private final AuthType authType;
   private final UserGroupInformation userGroupInformation;
   private final IdentityTransformer identityTransformer;
@@ -155,6 +156,8 @@ public class AzureBlobFileSystemStore implements Closeable {
     }
 
     LOG.trace("AbfsConfiguration init complete");
+
+    this.isNamespaceEnabled = abfsConfiguration.getIsNamespaceEnabledAccount();
 
     this.userGroupInformation = UserGroupInformation.getCurrentUser();
     this.userName = userGroupInformation.getShortUserName();
@@ -235,43 +238,33 @@ public class AzureBlobFileSystemStore implements Closeable {
   }
 
   public boolean getIsNamespaceEnabled() throws AzureBlobFileSystemException {
-    if (!isNamespaceEnabledSet) {
-      if (isNameSpaceEnabledSetFromConfig()) {
-        return this.isNamespaceEnabled;
-      }
-
-      LOG.debug("Get root ACL status");
-      try (AbfsPerfInfo perfInfo = startTracking("getIsNamespaceEnabled", "getAclStatus")) {
-        AbfsRestOperation op = client.getAclStatus(AbfsHttpConstants.FORWARD_SLASH + AbfsHttpConstants.ROOT_PATH);
-        perfInfo.registerResult(op.getResult());
-        isNamespaceEnabled = true;
-        perfInfo.registerSuccess(true);
-      } catch (AbfsRestOperationException ex) {
-        // Get ACL status is a HEAD request, its response doesn't contain errorCode
-        // So can only rely on its status code to determine its account type.
-        if (HttpURLConnection.HTTP_BAD_REQUEST != ex.getStatusCode()) {
-          throw ex;
-        }
-        isNamespaceEnabled = false;
-      }
-      isNamespaceEnabledSet = true;
+    try {
+      return this.isNamespaceEnabled.toBoolean();
+    } catch (TrileanConversionException e) {
+      LOG.debug("isNamespaceEnabled is not set; fall back and determine "
+          + "through getAcl server call");
     }
 
-    return isNamespaceEnabled;
-  }
+    LOG.debug("Get root ACL status");
+    try (AbfsPerfInfo perfInfo = startTracking("getIsNamespaceEnabled",
+        "getAclStatus")) {
+      AbfsRestOperation op = client.getAclStatus(
+          AbfsHttpConstants.FORWARD_SLASH + AbfsHttpConstants.ROOT_PATH);
+      perfInfo.registerResult(op.getResult());
+      isNamespaceEnabled = Trilean.getTrilean(true);
+      perfInfo.registerSuccess(true);
+    } catch (AbfsRestOperationException ex) {
+      // Get ACL status is a HEAD request, its response doesn't contain
+      // errorCode
+      // So can only rely on its status code to determine its account type.
+      if (HttpURLConnection.HTTP_BAD_REQUEST != ex.getStatusCode()) {
+        throw ex;
+      }
 
-  @VisibleForTesting
-  boolean isNameSpaceEnabledSetFromConfig() {
-    final String hnsEnabledConfig = abfsConfiguration
-        .getIsNamespaceEnabledAccount();
-    if (TRUE_STR.equalsIgnoreCase(hnsEnabledConfig)
-        || FALSE_STR.equalsIgnoreCase(hnsEnabledConfig)) {
-      this.isNamespaceEnabled = Boolean.valueOf(hnsEnabledConfig);
-      this.isNamespaceEnabledSet = true;
-      return true;
+      isNamespaceEnabled = Trilean.getTrilean(false);
     }
 
-    return false;
+    return isNamespaceEnabled.toBoolean();
   }
 
   @VisibleForTesting
@@ -1430,8 +1423,8 @@ public class AzureBlobFileSystemStore implements Closeable {
   }
 
   @VisibleForTesting
-  void setNamespaceEnabledSet(boolean isNamespaceEnabledSet){
-    this.isNamespaceEnabledSet = isNamespaceEnabledSet;
+  void setNamespaceEnabled(Trilean isNamespaceEnabled){
+    this.isNamespaceEnabled = isNamespaceEnabled;
   }
 
 }
