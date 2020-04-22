@@ -114,6 +114,11 @@ public class AbfsConfiguration{
       DefaultValue = DEFAULT_MAX_RETRY_ATTEMPTS)
   private int maxIoRetries;
 
+  @IntegerConfigurationValidatorAnnotation(ConfigurationKey = AZURE_CUSTOM_TOKEN_FETCH_RETRY_COUNT,
+      MinValue = 0,
+      DefaultValue = DEFAULT_CUSTOM_TOKEN_FETCH_RETRY_COUNT)
+  private int customTokenFetchRetryCount;
+
   @LongConfigurationValidatorAnnotation(ConfigurationKey = AZURE_BLOCK_SIZE_PROPERTY_NAME,
       MinValue = 0,
       MaxValue = MAX_AZURE_BLOCK_SIZE,
@@ -433,6 +438,10 @@ public class AbfsConfiguration{
     return this.maxIoRetries;
   }
 
+  public int getCustomTokenFetchRetryCount() {
+    return this.customTokenFetchRetryCount;
+  }
+
   public long getAzureBlockSize() {
     return this.azureBlockSize;
   }
@@ -605,7 +614,7 @@ public class AbfsConfiguration{
         LOG.trace("Initializing {}", customTokenProviderClass.getName());
         azureTokenProvider.initialize(rawConfig, accountName);
         LOG.trace("{} init complete", customTokenProviderClass.getName());
-        return new CustomTokenProviderAdapter(azureTokenProvider);
+        return new CustomTokenProviderAdapter(azureTokenProvider, getCustomTokenFetchRetryCount());
       } catch(IllegalArgumentException e) {
         throw e;
       } catch (Exception e) {
@@ -743,6 +752,11 @@ public class AbfsConfiguration{
   @VisibleForTesting
   void setIsNamespaceEnabledAccount(String isNamespaceEnabledAccount) {
     this.isNamespaceEnabledAccount = isNamespaceEnabledAccount;
+  }
+
+  @VisibleForTesting
+  public void setMaxIoRetries(int maxIoRetries) {
+    this.maxIoRetries = maxIoRetries;
   }
 
   private String getTrimmedPasswordString(String key, String defaultValue) throws IOException {
