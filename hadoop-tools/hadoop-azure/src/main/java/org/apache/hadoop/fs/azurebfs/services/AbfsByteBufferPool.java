@@ -81,18 +81,18 @@ public class AbfsByteBufferPool {
         .checkArgument(queueCapacity > 0, "queueCapacity cannot be < 1");
   }
 
-  private boolean isPossibleToIssueNewBuffer() {
+  private synchronized boolean isPossibleToIssueNewBuffer() {
     Runtime rt = Runtime.getRuntime();
-    double bufferCountByMaxFreeBuffers = ceil(
-        maxBuffersToPool + rt.availableProcessors());
+    int bufferCountByMaxFreeBuffers =
+        maxBuffersToPool + rt.availableProcessors();
     if (numBuffersInUse >= bufferCountByMaxFreeBuffers) {
       return false;
     }
 
     double freeMemory = rt.maxMemory() - (rt.totalMemory() - rt.freeMemory());
-    double bufferCountByMemory = ceil(
+    int bufferCountByMemory = (int) ceil(
         (freeMemory * maxMemUsagePercentage / HUNDRED) / bufferSize);
-    int maxBuffersThatCanBeInUse = (int) min(bufferCountByMemory,
+    int maxBuffersThatCanBeInUse = min(bufferCountByMemory,
         bufferCountByMaxFreeBuffers);
     if (maxBuffersThatCanBeInUse < 2) {
       maxBuffersThatCanBeInUse = 2;
@@ -133,6 +133,7 @@ public class AbfsByteBufferPool {
   /**
    * @param byteArray The buffer to be offered back to the pool.
    */
+  @SuppressFBWarnings("RV_RETURN_VALUE_IGNORED")
   public synchronized void release(byte[] byteArray) {
     Preconditions.checkArgument(byteArray.length == bufferSize,
         "Buffer size has" + " to be %s (Received buffer length: %s)",
