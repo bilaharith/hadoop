@@ -18,13 +18,15 @@
 
 package org.apache.hadoop.fs.azurebfs.services;
 
+import java.util.concurrent.ArrayBlockingQueue;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-
-import java.util.concurrent.ArrayBlockingQueue;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import static java.lang.Math.ceil;
 import static java.lang.Math.min;
+
 import static org.apache.hadoop.fs.azurebfs.constants.FileSystemConfigurations.MAX_VALUE_MAX_AZURE_WRITE_MEM_USAGE_PERCENTAGE;
 import static org.apache.hadoop.fs.azurebfs.constants.FileSystemConfigurations.MIN_VALUE_MAX_AZURE_WRITE_MEM_USAGE_PERCENTAGE;
 
