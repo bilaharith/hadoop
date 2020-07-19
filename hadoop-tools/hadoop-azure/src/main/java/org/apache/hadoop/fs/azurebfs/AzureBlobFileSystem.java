@@ -39,6 +39,7 @@ import java.util.concurrent.Future;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.fs.azurebfs.contracts.exceptions.PathAccessDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1133,10 +1134,14 @@ public class AzureBlobFileSystem extends FileSystem {
       } else if (statusCode == HttpURLConnection.HTTP_CONFLICT) {
         throw (IOException) new FileAlreadyExistsException(ere.getMessage())
             .initCause(exception);
+      } else if (statusCode == HttpURLConnection.HTTP_FORBIDDEN) {
+        throw (IOException) new PathAccessDeniedException(ere.getMessage())
+            .initCause(exception);
       } else {
         throw ere;
       }
-    } else if (exception instanceof SASTokenProviderException) {
+    } else if (exception instanceof SASTokenProviderException
+        || exception instanceof PathAccessDeniedException) {
       throw exception;
     } else {
       if (path == null) {
@@ -1236,8 +1241,13 @@ public class AzureBlobFileSystem extends FileSystem {
   }
 
   @VisibleForTesting
-  boolean getIsNamespaceEnabled() throws AzureBlobFileSystemException {
-    return abfsStore.getIsNamespaceEnabled();
+  boolean getIsNamespaceEnabled() throws IOException {
+    try {
+      return abfsStore.getIsNamespaceEnabled();
+    }catch(AzureBlobFileSystemException e){
+      checkException(new Path("/"),e);
+      return false;
+    }
   }
 
   @VisibleForTesting
