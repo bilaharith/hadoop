@@ -101,8 +101,8 @@ public class AbfsByteBufferPool {
   }
 
   private synchronized boolean isPossibleToIssueNewBuffer() {
-    setMaxBuffersThatCanBeInUse();
-    return numBuffersInUse < MAX_BUFFERS_THAT_CAN_BE_IN_USE;
+    //setMaxBuffersThatCanBeInUse();
+    return numBuffersInUse < 8;//MAX_BUFFERS_THAT_CAN_BE_IN_USE;
   }
 
   /**

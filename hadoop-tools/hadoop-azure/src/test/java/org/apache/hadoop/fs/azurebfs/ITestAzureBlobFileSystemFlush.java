@@ -20,6 +20,9 @@ package org.apache.hadoop.fs.azurebfs;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -237,15 +240,65 @@ public class ITestAzureBlobFileSystemFlush extends AbstractAbfsScaleTest {
   }
 
   @Test
+  public void testWriteWithMultipleOutputStreamAtTheSameTimeLoop()
+      throws IOException, InterruptedException, ExecutionException {
+
+    long start = System.currentTimeMillis();
+
+    for (int i = 0; i < 3; i++) {
+      testWriteWithMultipleOutputStreamAtTheSameTime();
+      System.out.println(new Date());
+    }
+
+    long end = System.currentTimeMillis();
+    long timeTaken = end - start;
+
+    System.out.println("Time taken: " + timeTaken);
+    System.out.println("\n");
+
+    //List<Long> list = AbfsOutputStream.getLatencies;
+    List<Long> list = AbfsOutputStreamOld.getLatencies;
+
+    Collections.sort(list);
+    int sum = 0;
+    for (int i = 0; i < list.size(); i++) {
+      long latency = list.get(i);
+      sum += latency;
+      System.out.println(latency);
+    }
+
+    int size = list.size();
+    int pc50 = size * 50/100;
+    int pc75 = size * 75/100;
+    int pc90 = size * 90/100;
+    int pc95 = size * 95/100;
+    int pc99 = size * 99/100;
+
+    System.out.println("size : "+list.size());
+    System.out.println("\n");
+
+    double avg = 0.0;
+    if(sum!=0) {
+      avg = (sum / list.size());
+    }
+    System.out.println("Min: "+list.get(0)+", Max: "+list.get(list.size()-1)+
+        ", Avg:"+avg);
+    System.out.println("\n");
+    System.out.println(list.get(pc50));
+    System.out.println(list.get(pc75));
+    System.out.println(list.get(pc90));
+    System.out.println(list.get(pc95));
+    System.out.println(list.get(pc99));
+  }
+
+  @Test
   public void testWriteWithMultipleOutputStreamAtTheSameTime()
       throws IOException, InterruptedException, ExecutionException {
     AzureBlobFileSystem fs = getFileSystem();
     String testFilePath = methodName.getMethodName();
     Path[] testPaths = new Path[CONCURRENT_STREAM_OBJS_TEST_OBJ_COUNT];
     createNStreamsAndWriteDifferentSizesConcurrently(fs, testFilePath,
-        CONCURRENT_STREAM_OBJS_TEST_OBJ_COUNT, testPaths);
-    assertSuccessfulWritesOnAllStreams(fs,
-        CONCURRENT_STREAM_OBJS_TEST_OBJ_COUNT, testPaths);
+        /*CONCURRENT_STREAM_OBJS_TEST_OBJ_COUNT*/1, testPaths);
   }
 
   private void assertSuccessfulWritesOnAllStreams(final FileSystem fs,
@@ -273,7 +326,7 @@ public class ITestAzureBlobFileSystemFlush extends AbstractAbfsScaleTest {
       int numWritesToBeDone = i + 1;
       futureTasks.add(es.submit(() -> {
         try (FSDataOutputStream stream = fs.create(testPath)) {
-          makeNWritesToStream(stream, numWritesToBeDone, b, es);
+          makeNWritesToStream(stream, /*numWritesToBeDone*/1000, b, es);
         }
         return null;
       }));

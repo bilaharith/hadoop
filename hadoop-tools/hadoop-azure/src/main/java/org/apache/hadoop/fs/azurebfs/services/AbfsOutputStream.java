@@ -22,6 +22,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
@@ -52,6 +54,8 @@ import static org.apache.hadoop.io.IOUtils.wrapException;
  * The BlobFsOutputStream for Rest AbfsClient.
  */
 public class AbfsOutputStream extends OutputStream implements Syncable, StreamCapabilities {
+
+  public static List getLatencies = new ArrayList<>();
 
   private final AbfsClient client;
   private final String path;
@@ -131,9 +135,9 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
         return daemonThread;
       }
     };
-    int maxConcurrentThreadCount =
-        abfsOutputStreamContext.getWriteConcurrencyFactor() * Runtime.getRuntime()
-            .availableProcessors();
+    int maxConcurrentThreadCount = 8;
+        /*abfsOutputStreamContext.getWriteConcurrencyFactor() * Runtime.getRuntime()
+            .availableProcessors();*/
     threadExecutor = new ThreadPoolExecutor(maxConcurrentThreadCount,
         maxConcurrentThreadCount, 10L, TimeUnit.SECONDS,
         new LinkedBlockingQueue<>(), daemonThreadFactory);
@@ -353,7 +357,11 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
     final byte[] bytes = buffer;
     final int bytesLength = bufferIndex;
     outputStreamStatistics.bytesToUpload(bytesLength);
+
+    long start = System.currentTimeMillis();
     buffer = byteBufferPool.get();
+    getLatencies.add(System.currentTimeMillis() - start);
+
     bufferIndex = 0;
     final long offset = position;
     position += bytesLength;
