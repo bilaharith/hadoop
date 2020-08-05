@@ -256,8 +256,8 @@ public class ITestAzureBlobFileSystemFlush extends AbstractAbfsScaleTest {
     System.out.println("Time taken: " + timeTaken);
     System.out.println("\n");
 
-    //List<Long> list = AbfsOutputStream.getLatencies;
-    List<Long> list = AbfsOutputStreamOld.getLatencies;
+    List<Long> list = AbfsOutputStream.getLatencies;
+    //List<Long> list = AbfsOutputStreamOld.getLatencies;
 
     Collections.sort(list);
     int sum = 0;

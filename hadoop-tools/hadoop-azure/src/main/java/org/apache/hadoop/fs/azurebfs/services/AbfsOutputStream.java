@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -56,6 +57,8 @@ import static org.apache.hadoop.io.IOUtils.wrapException;
 public class AbfsOutputStream extends OutputStream implements Syncable, StreamCapabilities {
 
   public static List getLatencies = new ArrayList<>();
+  public static List appendLatencies =
+      Collections.synchronizedList(new ArrayList<>());
 
   private final AbfsClient client;
   private final String path;
@@ -94,6 +97,8 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
   private static final Logger LOG =
       LoggerFactory.getLogger(AbfsOutputStream.class);
 
+  public static int maxConcurrentThreadCountConf;
+
   public AbfsOutputStream(
           final AbfsClient client,
           final Statistics statistics,
@@ -120,10 +125,11 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
   }
 
   private void init(final AbfsOutputStreamContext abfsOutputStreamContext) {
-    if (isCommonPoolsInitialised()) {
+    /*if (isCommonPoolsInitialised()) {
       return;
     }
-
+*/
+    //System.out.println(",#,");
     initWriteBufferPool(abfsOutputStreamContext);
 
     ThreadFactory daemonThreadFactory = new ThreadFactory() {
@@ -135,7 +141,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
         return daemonThread;
       }
     };
-    int maxConcurrentThreadCount = 8;
+    int maxConcurrentThreadCount = maxConcurrentThreadCountConf;
         /*abfsOutputStreamContext.getWriteConcurrencyFactor() * Runtime.getRuntime()
             .availableProcessors();*/
     threadExecutor = new ThreadPoolExecutor(maxConcurrentThreadCount,
@@ -369,6 +375,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
     final Future<Void> job = threadExecutor.submit(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
+        long start = System.currentTimeMillis();
         AbfsPerfTracker tracker = client.getAbfsPerfTracker();
         try (AbfsPerfInfo perfInfo = new AbfsPerfInfo(tracker,
                 "writeCurrentBufferToService", "append")) {
@@ -378,6 +385,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
           perfInfo.registerResult(op.getResult());
           byteBufferPool.release(bytes);
           perfInfo.registerSuccess(true);
+          appendLatencies.add(System.currentTimeMillis() - start);
           return null;
         }
       }
