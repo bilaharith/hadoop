@@ -18,11 +18,13 @@
 
 package org.apache.hadoop.fs.azurebfs.services;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.apache.hadoop.io.ElasticByteBufferPool;
 
 import static java.lang.Math.ceil;
 import static java.lang.Math.min;
@@ -35,6 +37,7 @@ import static org.apache.hadoop.fs.azurebfs.constants.FileSystemConfigurations.M
  */
 public class AbfsByteBufferPool {
 
+  public static ElasticByteBufferPool pool = new ElasticByteBufferPool();
   private static final int HUNDRED = 100;
 
   /**
@@ -112,9 +115,11 @@ public class AbfsByteBufferPool {
    * Waits if pool is empty and already maximum number of buffers are in use.
    */
   public byte[] get() {
+
     byte[] byteArray = null;
     synchronized (this) {
-      byteArray = freeBuffers.poll();
+      byteArray = pool.getBuffer(false, bufferSize).array();
+//      byteArray = freeBuffers.poll();
       if (byteArray == null && isPossibleToIssueNewBuffer()) {
         byteArray = new byte[bufferSize];
       }
@@ -147,7 +152,8 @@ public class AbfsByteBufferPool {
     if (numBuffersInUse < 0) {
       numBuffersInUse = 0;
     }
-    freeBuffers.offer(byteArray);
+    //freeBuffers.offer(byteArray);
+    pool.putBuffer(ByteBuffer.wrap(byteArray));
   }
 
   @VisibleForTesting

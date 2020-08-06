@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.azurebfs.services.AbfsByteBufferPool;
 import org.apache.hadoop.fs.azurebfs.services.AbfsOutputStream;
 import org.apache.hadoop.fs.azurebfs.services.AbfsOutputStreamOld;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.Test;
 
@@ -50,7 +51,7 @@ public class ITestAzureBlobFileSystemCopyFromLocal
   public ITestAzureBlobFileSystemCopyFromLocal() throws Exception {
     super();
   }
-/*
+
   @Test
   public void testAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA() throws Exception {
 
@@ -77,26 +78,27 @@ public class ITestAzureBlobFileSystemCopyFromLocal
         AbfsOutputStreamOld.getLatencies =  new ArrayList<>();
         break;
 
-
+/*
         AbfsOutputStream.appendLatencies =
             Collections.synchronizedList(new ArrayList<>());
         AbfsOutputStream.getLatencies =  new ArrayList<>();;
-
+*/
       }
     }
   }
-*/
-  @Test
-  public void test() throws Exception {
+
+  //@Test
+  public void test(int threadCount, int bufferCount) throws Exception {
     final AzureBlobFileSystem fsNew = getFileSystem();
 
-    int threadCount = 16;
-    int bufferCount=32;
-
+    /*int threadCount = 4;
+    int bufferCount=4;*/
+/*
     AbfsOutputStream.maxConcurrentThreadCountConf = threadCount;
     AbfsByteBufferPool.maxBuffersThatCanBeInUseConf = bufferCount;
-
-    //AbfsOutputStreamOld.maxConcurrentThreadCountConf = threadCount;
+    AbfsByteBufferPool.pool = new ElasticByteBufferPool();
+*/
+    AbfsOutputStreamOld.maxConcurrentThreadCountConf = threadCount;
 
     /*System.out.print("Thread count: "+threadCount+", Buffer count: "+bufferCount);
 */
@@ -120,9 +122,9 @@ public class ITestAzureBlobFileSystemCopyFromLocal
 
     System.out.print(timeTaken+", ");
 
-    List<Long> appendList = AbfsOutputStream.appendLatencies;
+    List<Long> appendList = AbfsOutputStreamOld.appendLatencies;
 
-    List<Long> getList = AbfsOutputStream.getLatencies;
+    List<Long> getList = AbfsOutputStreamOld.getLatencies;
     //List<Long> getList = AbfsOutputStreamOld.getLatencies;
 
     printAnalysis(getList,

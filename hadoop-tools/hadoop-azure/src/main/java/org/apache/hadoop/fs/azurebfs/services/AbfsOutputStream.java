@@ -368,6 +368,7 @@ public class AbfsOutputStream extends OutputStream implements Syncable, StreamCa
 
     long start = System.currentTimeMillis();
     buffer = byteBufferPool.get();
+    System.out.println(getLatencies.size());
     getLatencies.add(System.currentTimeMillis() - start);
 
     bufferIndex = 0;
