@@ -50,16 +50,21 @@ public class ITestAzureBlobFileSystemCopyFromLocal
   public ITestAzureBlobFileSystemCopyFromLocal() throws Exception {
     super();
   }
-
+/*
   @Test
   public void testAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA() throws Exception {
 
-    List<Integer> threadCounts = new ArrayList<>(Arrays.asList(4,8,16,32,40,
+
+    int n = Runtime.getRuntime().availableProcessors();
+
+    List<Integer> threadCounts = new ArrayList<>(Arrays.asList(1, 4,8,16,32,40,
         64));
 
     for(int i=0;i<threadCounts.size();i++){
       int threadCount = threadCounts.get(i);
       for(int j=1;j<5;j++){
+        System.gc();
+        Thread.sleep(1000);
         try {
           test(threadCount, j * threadCount);
         }catch(Exception e){
@@ -67,20 +72,32 @@ public class ITestAzureBlobFileSystemCopyFromLocal
           e.printStackTrace();
         }
 
+        AbfsOutputStreamOld.appendLatencies =
+            Collections.synchronizedList(new ArrayList<>());
+        AbfsOutputStreamOld.getLatencies =  new ArrayList<>();
+        break;
+
+
         AbfsOutputStream.appendLatencies =
             Collections.synchronizedList(new ArrayList<>());
-
         AbfsOutputStream.getLatencies =  new ArrayList<>();;
+
       }
     }
   }
-
-  //@Test
-  public void test(int threadCount, int bufferCount) throws Exception {
+*/
+  @Test
+  public void test() throws Exception {
     final AzureBlobFileSystem fsNew = getFileSystem();
+
+    int threadCount = 16;
+    int bufferCount=32;
 
     AbfsOutputStream.maxConcurrentThreadCountConf = threadCount;
     AbfsByteBufferPool.maxBuffersThatCanBeInUseConf = bufferCount;
+
+    //AbfsOutputStreamOld.maxConcurrentThreadCountConf = threadCount;
+
     /*System.out.print("Thread count: "+threadCount+", Buffer count: "+bufferCount);
 */
     long start = System.currentTimeMillis();
