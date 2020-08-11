@@ -75,7 +75,7 @@ public class AbstractAbfsTestWithTimeout extends Assert {
    * @return a timeout in milliseconds
    */
   protected int getTestTimeoutMillis() {
-    return TEST_TIMEOUT;
+    return TEST_TIMEOUT*10;
   }
 
   /**

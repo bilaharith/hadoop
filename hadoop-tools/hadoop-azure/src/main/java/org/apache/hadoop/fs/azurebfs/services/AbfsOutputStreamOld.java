@@ -24,6 +24,9 @@ import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -53,6 +56,12 @@ import static org.apache.hadoop.io.IOUtils.wrapException;
  * The BlobFsOutputStream for Rest AbfsClient.
  */
 public class AbfsOutputStreamOld extends OutputStream implements Syncable, StreamCapabilities {
+
+
+  public static List getLatencies = new ArrayList<>();
+  public static List appendLatencies =
+      Collections.synchronizedList(new ArrayList<>());
+
 
   private final AbfsClient client;
   private final String path;
@@ -92,6 +101,8 @@ public class AbfsOutputStreamOld extends OutputStream implements Syncable, Strea
   private static final Logger LOG =
       LoggerFactory.getLogger(AbfsOutputStream.class);
 
+  public static int maxConcurrentThreadCountConf;
+
   public AbfsOutputStreamOld(
       final AbfsClient client,
       final Statistics statistics,
@@ -114,7 +125,8 @@ public class AbfsOutputStreamOld extends OutputStream implements Syncable, Strea
     this.writeOperations = new ConcurrentLinkedDeque<>();
     this.outputStreamStatistics = abfsOutputStreamContext.getStreamStatistics();
 
-    this.maxConcurrentRequestCount = 4 * Runtime.getRuntime().availableProcessors();
+    this.maxConcurrentRequestCount = maxConcurrentThreadCountConf;
+        //4 * Runtime.getRuntime().availableProcessors();
 
     this.threadExecutor
         = new ThreadPoolExecutor(maxConcurrentRequestCount,
@@ -318,7 +330,11 @@ public class AbfsOutputStreamOld extends OutputStream implements Syncable, Strea
     final byte[] bytes = buffer;
     final int bytesLength = bufferIndex;
     outputStreamStatistics.bytesToUpload(bytesLength);
+
+    long start1 = System.currentTimeMillis();
     buffer = byteBufferPool.getBuffer(false, bufferSize).array();
+    getLatencies.add(System.currentTimeMillis() - start1);
+
     bufferIndex = 0;
     final long offset = position;
     position += bytesLength;
@@ -332,6 +348,7 @@ public class AbfsOutputStreamOld extends OutputStream implements Syncable, Strea
     final Future<Void> job = completionService.submit(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
+        long start = System.currentTimeMillis();
         AbfsPerfTracker tracker = client.getAbfsPerfTracker();
         try (AbfsPerfInfo perfInfo = new AbfsPerfInfo(tracker,
             "writeCurrentBufferToService", "append")) {
@@ -341,6 +358,7 @@ public class AbfsOutputStreamOld extends OutputStream implements Syncable, Strea
           perfInfo.registerResult(op.getResult());
           byteBufferPool.putBuffer(ByteBuffer.wrap(bytes));
           perfInfo.registerSuccess(true);
+          appendLatencies.add(System.currentTimeMillis() - start);
           return null;
         }
       }

@@ -57,6 +57,8 @@ public class AbfsByteBufferPool {
 
   private static int MAX_BUFFERS_THAT_CAN_BE_IN_USE;
 
+  public static int maxBuffersThatCanBeInUseConf;
+
   /**
    * @param bufferSize            Size of the byte[] to be returned.
    * @param queueCapacity         Maximum number of buffers that the pool can
@@ -101,8 +103,8 @@ public class AbfsByteBufferPool {
   }
 
   private synchronized boolean isPossibleToIssueNewBuffer() {
-    setMaxBuffersThatCanBeInUse();
-    return numBuffersInUse < MAX_BUFFERS_THAT_CAN_BE_IN_USE;
+    //setMaxBuffersThatCanBeInUse();
+    return numBuffersInUse < maxBuffersThatCanBeInUseConf;//MAX_BUFFERS_THAT_CAN_BE_IN_USE;
   }
 
   /**
