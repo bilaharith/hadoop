@@ -62,9 +62,4 @@ public class ITestAbfsFileSystemContractConcat
     return binding.getInitialConfiguration();
   }
 
-  @Override
-  public void initFSEndpointForNewFS() throws Exception {
-    binding.initFSEndpointForNewFS();
-  }
-
 }

@@ -46,8 +46,6 @@ public class ITestAbfsContractUnbuffer extends AbstractContractUnbufferTest impl
 
   @Override
   public void setup() throws Exception {
-    binding.setup();
-    super.setup();
   }
 
   @Override
@@ -86,11 +84,6 @@ public class ITestAbfsContractUnbuffer extends AbstractContractUnbufferTest impl
   @Override
   public Configuration getInitialConfiguration() {
     return binding.getInitialConfiguration();
-  }
-
-  @Override
-  public void initFSEndpointForNewFS() throws Exception {
-    binding.initFSEndpointForNewFS();
   }
 
 }

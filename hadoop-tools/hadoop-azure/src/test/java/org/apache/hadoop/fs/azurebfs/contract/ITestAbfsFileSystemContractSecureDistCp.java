@@ -60,9 +60,4 @@ public class ITestAbfsFileSystemContractSecureDistCp
     return binding.getInitialConfiguration();
   }
 
-  @Override
-  public void initFSEndpointForNewFS() throws Exception {
-    binding.initFSEndpointForNewFS();
-  }
-
 }

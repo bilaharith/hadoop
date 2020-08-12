@@ -33,11 +33,11 @@ import org.junit.Assume;
  * Bind ABFS contract tests to the Azure test setup/teardown.
  */
 public class ABFSContractTestBinding extends AbstractAbfsIntegrationTest {
-  private URI testUri;
+  //private URI testUri;
   private final boolean useExistingFileSystem;
 
   public ABFSContractTestBinding() throws Exception {
-    this(true);
+    this(false);
   }
 
   public ABFSContractTestBinding(
@@ -47,7 +47,7 @@ public class ABFSContractTestBinding extends AbstractAbfsIntegrationTest {
 
   public boolean isSecureMode() {
     return this.getAuthType() == AuthType.SharedKey ? false : true;
-  }
+  }/*
 
   @Override
   public void initFSEndpointForNewFS() throws Exception {
@@ -76,5 +76,5 @@ public class ABFSContractTestBinding extends AbstractAbfsIntegrationTest {
       this.testUri = new URI(super.getTestUrl());
     }
   }
-
+*/
 }
