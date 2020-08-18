@@ -178,20 +178,20 @@ public class ITestAbfsNetworkStatistics extends AbstractAbfsIntegrationTest {
     FSDataInputStream in = null;
     try {
 
+      metricMap = fs.getInstrumentationMap();
+      long getResponsesBeforeTest = metricMap
+          .get(CONNECTIONS_MADE.getStatName());
+
       /*
        * Creating a File and writing some bytes in it.
        *
-       * get_response : 3(getFileSystem) + 1(OutputStream creation) + 2
-       * (Writing data in Data store).
+       * get_response : 3(getResponsesBeforeTest) + 1(OutputStream creation)
+       *  + 1(Writing data in Data store(append call)).
        *
        */
       out = fs.create(getResponsePath);
       out.write(testResponseString.getBytes());
       out.hflush();
-
-      metricMap = fs.getInstrumentationMap();
-      long getResponsesBeforeTest = metricMap
-          .get(CONNECTIONS_MADE.getStatName());
 
       // open would require 1 get response.
       in = fs.open(getResponsePath);
@@ -206,7 +206,8 @@ public class ITestAbfsNetworkStatistics extends AbstractAbfsIntegrationTest {
       /*
        * Testing values of statistics after writing and reading a buffer.
        *
-       * get_responses - (above operations) + 1(open()) + 1 (read()).;
+       * get_responses => ((3) above operations) + 1(create) + 1 (append)
+       * + 1(open) + 1 (read) = > 3(getResponsesBeforeTest) + 4 + (extra cals)
        *
        * bytes_received - This should be equal to bytes sent earlier.
        */
@@ -216,7 +217,7 @@ public class ITestAbfsNetworkStatistics extends AbstractAbfsIntegrationTest {
         // no network calls are made for hflush in case of appendblob
         extraCalls++;
       }
-      long expectedGetResponses = getResponsesBeforeTest + extraCalls + 1;
+      long expectedGetResponses = getResponsesBeforeTest + extraCalls + 4;
       getResponses = assertAbfsStatistics(AbfsStatistic.GET_RESPONSES,
           expectedGetResponses, metricMap);
 
