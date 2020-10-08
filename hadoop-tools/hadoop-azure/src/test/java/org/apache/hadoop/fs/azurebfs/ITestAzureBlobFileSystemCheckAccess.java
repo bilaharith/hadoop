@@ -42,6 +42,7 @@ import org.apache.hadoop.security.AccessControlException;
 
 import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.AZURE_CREATE_REMOTE_FILESYSTEM_DURING_INITIALIZATION;
 import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.FS_AZURE_ACCOUNT_AUTH_TYPE_PROPERTY_NAME;
+import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.FS_AZURE_ACCOUNT_IS_HNS_ENABLED;
 import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.FS_AZURE_ACCOUNT_OAUTH_CLIENT_ENDPOINT;
 import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.FS_AZURE_ACCOUNT_TOKEN_PROVIDER_TYPE_PROPERTY_NAME;
 import static org.apache.hadoop.fs.azurebfs.constants.ConfigurationKeys.FS_AZURE_ENABLE_CHECK_ACCESS;
@@ -97,6 +98,7 @@ public class ITestAzureBlobFileSystemCheckAccess
         + getAccountName(), ClientCredsTokenProvider.class.getName());
     conf.setBoolean(AZURE_CREATE_REMOTE_FILESYSTEM_DURING_INITIALIZATION,
         false);
+    getConfiguration().unset(FS_AZURE_ACCOUNT_IS_HNS_ENABLED);
     this.testUserFs = FileSystem.newInstance(getRawConfiguration());
   }
 
@@ -178,7 +180,7 @@ public class ITestAzureBlobFileSystemCheckAccess
     setTestUserFs();
 
     //  When the driver does not know if the account is HNS enabled or not it
-    //  makes a server call and fails
+    //  makes a server call and fails since there is no RBAC permission is set.
     intercept(AccessControlException.class,
         "\"This request is not authorized to perform this operation using "
             + "this permission.\", 403",
@@ -197,6 +199,27 @@ public class ITestAzureBlobFileSystemCheckAccess
     testUserFs.access(new Path("/"), FsAction.READ);
 
     superUserFs.access(new Path("/"), FsAction.READ);
+  }
+
+  @Test
+  public void testWithSharedKey() throws IOException {
+    String authType = getConfiguration()
+        .get(FS_AZURE_ACCOUNT_AUTH_TYPE_PROPERTY_NAME);
+    Assume.assumeTrue("AuthType has to be SharedKey",
+        AuthType.SharedKey.name().equalsIgnoreCase(authType));
+
+    Path file = new Path(TEST_FOLDER_PATH + "testWithSharedKey");
+    file = this.superUserFs.makeQualified(file);
+    this.superUserFs.delete(file, true);
+    this.superUserFs.create(file);
+
+    Configuration conf = getRawConfiguration();
+    conf.setBoolean(AZURE_CREATE_REMOTE_FILESYSTEM_DURING_INITIALIZATION,
+        false);
+    FileSystem testUserFS = FileSystem.newInstance(getRawConfiguration());
+    testUserFS.access(file, FsAction.ALL);
+    this.superUserFs.delete(file, true);
+    testUserFS.access(file, FsAction.ALL);  //  Tests for non existent file
   }
 
   @Test
