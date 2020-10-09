@@ -872,7 +872,7 @@ To run CheckAccess test cases you must register an app with no RBAC and set
 the following configurations.
 ```xml
 <!--===========================   FOR CheckAccess =========================-->
-<!-- To run ABFS CheckAccess SAS tests, you must register an app, with no role
+<!-- To run ABFS CheckAccess tests, you must register an app, with no role
  assignments, and set the configuration discussed below:
 
     1) Register a new app with no RBAC
@@ -887,12 +887,6 @@ created app. Please follow the below steps to fetch the guid.
     3) Set the following configurations:
 -->
 
-  <property>
-    <name>fs.azure.enable.check.access</name>
-    <value>true</value>
-    <description>By default the check access will be on. Checkaccess can
-    be turned off by changing this flag to false.</description>
-  </property>
   <property>
     <name>fs.azure.account.test.oauth2.client.id</name>
     <value>{client id}</value>
