@@ -83,10 +83,13 @@ public class ITestAzureBlobFileSystemListStatusIterator extends
     abfsStore.getAbfsConfiguration().setListMaxResults(10);
     RemoteIterator<FileStatus> fsIt = fs.listStatusIterator(new Path(
         "user/bith/testRoot"));
+    int i = 0;
     while(fsIt.hasNext()){
       FileStatus a = fsIt.next();
       System.out.println(a.getPath().toString().substring(50));
+      i++;
     }
+    assertEquals(TEST_FILES_NUMBER, i);
   }
 
   private AzureBlobFileSystemStore getAbfsStore(FileSystem fs)

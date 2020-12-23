@@ -8,9 +8,11 @@ import org.apache.hadoop.fs.azurebfs.AzureBlobFileSystemStore;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+
+import static org.apache.hadoop.fs.impl.FutureIOSupport.awaitFuture;
 
 public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
 
@@ -18,101 +20,87 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
 
   private final Path path;
   private final AzureBlobFileSystemStore abfsStore;
-  private final List<List<FileStatus>> allFileStatuses;
 
-  private int currentRow;
-  private int currentColumn;
+  private boolean firstRead = true;
   private String continuation;
   private CompletableFuture<IOException> future;
-  private boolean isFirstRead = true;
+  private ListIterator<FileStatus> primaryListIterator;
+  private ListIterator<FileStatus> secondaryListIterator;
 
   public ListStatusRemoteIterator(final Path path,
       final AzureBlobFileSystemStore abfsStore) throws IOException {
     this.path = path;
     this.abfsStore = abfsStore;
-    this.allFileStatuses = new ArrayList<>();
-    getMoreFileStatuses();
-    getMoreFileStatuses();
+    fetchMoreFileStatuses();
     forceCurrentFuture();
-    currentRow = 0;
-    currentColumn = 0;
+    fetchMoreFileStatuses();
+    forceCurrentFuture();
+    secondaryListIterator=null;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-    return currentRow < getRowCount() && currentColumn < getColCount();
+    if (primaryListIterator.hasNext()) {
+      return true;
+    }
+    if (secondaryListIterator == null) {
+      return false;
+    }
+    fetchMoreFileStatuses();
+    return primaryListIterator.hasNext();
   }
 
   @Override
   public FileStatus next() throws IOException {
-    if (currentRow >= getRowCount()
-        || (currentColumn >= getColCount()) && currentRow >= getRowCount()) {
+    if (!this.hasNext()) {
       throw new NoSuchElementException();
     }
-    FileStatus fs = getCurrentElement();
-    updatePointers();
-    return fs;
+    return primaryListIterator.next();
   }
 
-  private void updatePointers() throws IOException {
-    currentColumn++;
-    if (currentColumn >= getColCount()) {
-      currentColumn = 0;
-      currentRow++;
-      getMoreFileStatuses();
+  private void fetchMoreFileStatuses() throws IOException {
+    primaryListIterator = secondaryListIterator;
+    forceCurrentFuture();
+    if (!isIterationComplete()) {
+      fetchMoreFileStatusesAsync();
+    } else {
+      primaryListIterator = null;
     }
   }
 
-  private int getRowCount() {
-    return this.allFileStatuses.size();
-  }
-
-  private FileStatus getCurrentElement() {
-    return getCurrentRow().get(currentColumn);
-  }
-
-  private int getColCount() {
-    return getCurrentRow().size();
-  }
-
-  private List<FileStatus> getCurrentRow() {
-    return this.allFileStatuses.get(currentRow);
+  private boolean isIterationComplete() {
+    return !firstRead && (continuation == null || continuation.isEmpty());
   }
 
   private void forceCurrentFuture() throws IOException {
     if (future == null) {
       return;
     }
-    IOException ex;
-    try {
-      ex = future.get();
-    } catch (InterruptedException | ExecutionException e) {
-      throw new IOException(e);
-    }
+    IOException ex = awaitFuture(future);
     if (ex != null) {
       throw ex;
     }
     future = null;
   }
 
-  private void getMoreFileStatuses() throws IOException {
-    forceCurrentFuture();
+  private void fetchMoreFileStatusesAsync() {
     future = CompletableFuture.supplyAsync(() -> {
       try {
-        if (!isFirstRead && (continuation == null || continuation.isEmpty())) {
-          return null;
-        }
         List<FileStatus> fileStatuses = new ArrayList<>();
         continuation = abfsStore
             .listStatus(path, null, fileStatuses, FETCH_ALL_FALSE,
                 continuation);
-        isFirstRead = false;
-        if (!fileStatuses.isEmpty()) {
-          this.allFileStatuses.add(fileStatuses);
+        if (fileStatuses.isEmpty()) {
+          secondaryListIterator = null;
+        } else {
+          secondaryListIterator = fileStatuses.listIterator();
+        }
+        if (firstRead) {
+          firstRead = false;
         }
         return null;
-      } catch (IOException e) {
-        return e;
+      } catch (IOException ex) {
+        return ex;
       }
     });
   }
