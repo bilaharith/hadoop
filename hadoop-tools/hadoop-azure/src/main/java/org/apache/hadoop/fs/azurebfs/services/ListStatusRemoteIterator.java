@@ -23,8 +23,7 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
   private final Path path;
   private final AzureBlobFileSystemStore abfsStore;
 
-  private final Queue<CompletableFuture<IOException>> futures =
-      new LinkedList<>();
+  private CompletableFuture<IOException> future;
   private final Queue<ListIterator<FileStatus>> iterators = new LinkedList<>();
 
   int c = 0;
@@ -54,7 +53,7 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
     if (!iterators.isEmpty()) {
       System.out.println("iterators not empty");
       lsItr = iterators.poll();
-    } else if (!futures.isEmpty()) {
+    } else if (future!=null) {
       System.out.println("futures not empty");
       forceFuture();
       lsItr = iterators.poll();
@@ -75,26 +74,27 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
   }
 
   private void forceFuture() throws IOException {
-    if (futures.isEmpty()) {
+    if (future==null) {
       System.out.println("futures is empty");
       return;
     }
     System.out.println("Forcng the future");
-    IOException ex = awaitFuture(futures.poll());
+    IOException ex = awaitFuture(future);
     System.out.println("ForceFuture done ex: " + ex);
     if (ex != null) {
       throw ex;
     }
   }
 
-  private void fetchMoreFileStatusesAsync() {
+  private void fetchMoreFileStatusesAsync() throws IOException {
     c++;
     System.out.println("fetch: " + c);
+    forceFuture();
     if (isIterationComplete()) {
       System.out.println("Iteration complete");
       return;
     }
-    CompletableFuture<IOException> future = CompletableFuture
+    this.future = CompletableFuture
         .supplyAsync(() -> {
           synchronized (this) {
             try {
@@ -115,15 +115,10 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
             }
           }
         });
-    System.out.println("Adding to future");
-    futures.add(future);
   }
 
   private boolean isIterationComplete() {
     return !firstRead && (continuation == null || continuation.isEmpty());
   }
-
-  private void print(String msg) {
-    System.out.println(msg);
-  }
+  
 }
