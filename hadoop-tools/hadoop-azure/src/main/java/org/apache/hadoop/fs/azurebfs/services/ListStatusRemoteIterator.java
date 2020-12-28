@@ -1,10 +1,5 @@
 package org.apache.hadoop.fs.azurebfs.services;
 
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
-import org.apache.hadoop.fs.azurebfs.AzureBlobFileSystemStore;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -14,6 +9,11 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.azurebfs.AzureBlobFileSystemStore;
+
 import static org.apache.hadoop.fs.impl.FutureIOSupport.awaitFuture;
 
 public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
@@ -22,13 +22,10 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
 
   private final Path path;
   private final AzureBlobFileSystemStore abfsStore;
-
-  private CompletableFuture<IOException> future;
   private final Queue<ListIterator<FileStatus>> iterators = new LinkedList<>();
 
-  int c = 0;
-
   private boolean firstRead = true;
+  private CompletableFuture<IOException> future;
   private String continuation;
   private ListIterator<FileStatus> lsItr;
 
@@ -37,9 +34,7 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
     this.path = path;
     this.abfsStore = abfsStore;
     fetchMoreFileStatusesAsync();
-    forceFuture();
     fetchMoreFileStatusesAsync();
-    forceFuture();
     lsItr = iterators.poll();
   }
 
@@ -48,19 +43,12 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
     if (lsItr.hasNext()) {
       return true;
     }
-    System.out.println("Fetching more");
     fetchMoreFileStatusesAsync();
     if (!iterators.isEmpty()) {
-      System.out.println("iterators not empty");
       lsItr = iterators.poll();
-    } else if (future!=null) {
-      System.out.println("futures not empty");
-      forceFuture();
-      lsItr = iterators.poll();
-    }
-    if (lsItr == null) {
-      System.out.println("null iterator");
-      return false;
+      if (lsItr == null) {
+        return false;
+      }
     }
     return lsItr.hasNext();
   }
@@ -73,52 +61,42 @@ public class ListStatusRemoteIterator implements RemoteIterator<FileStatus> {
     return lsItr.next();
   }
 
-  private void forceFuture() throws IOException {
-    if (future==null) {
-      System.out.println("futures is empty");
+  private void fetchMoreFileStatusesAsync() throws IOException {
+    forceFuture();
+    if (isIterationComplete()) {
       return;
     }
-    System.out.println("Forcng the future");
+    this.future = CompletableFuture.supplyAsync(() -> {
+      try {
+        List<FileStatus> fileStatuses = new ArrayList<>();
+        continuation = abfsStore
+            .listStatus(path, null, fileStatuses, FETCH_ALL_FALSE,
+                continuation);
+        if (fileStatuses != null && !fileStatuses.isEmpty()) {
+          iterators.add(fileStatuses.listIterator());
+        }
+        if (firstRead) {
+          firstRead = false;
+        }
+        return null;
+      } catch (IOException ex) {
+        return ex;
+      }
+    });
+  }
+
+  private void forceFuture() throws IOException {
+    if (future == null) {
+      return;
+    }
     IOException ex = awaitFuture(future);
-    System.out.println("ForceFuture done ex: " + ex);
     if (ex != null) {
       throw ex;
     }
   }
 
-  private void fetchMoreFileStatusesAsync() throws IOException {
-    c++;
-    System.out.println("fetch: " + c);
-    forceFuture();
-    if (isIterationComplete()) {
-      System.out.println("Iteration complete");
-      return;
-    }
-    this.future = CompletableFuture
-        .supplyAsync(() -> {
-          synchronized (this) {
-            try {
-              List<FileStatus> fileStatuses = new ArrayList<>();
-              continuation = abfsStore
-                  .listStatus(path, null, fileStatuses, FETCH_ALL_FALSE,
-                      continuation);
-              if (fileStatuses != null && !fileStatuses.isEmpty()) {
-                System.out.println("Adding to iterators");
-                iterators.add(fileStatuses.listIterator());
-              }
-              if (firstRead) {
-                firstRead = false;
-              }
-              return null;
-            } catch (IOException ex) {
-              return ex;
-            }
-          }
-        });
-  }
-
   private boolean isIterationComplete() {
     return !firstRead && (continuation == null || continuation.isEmpty());
   }
-  
+
 }

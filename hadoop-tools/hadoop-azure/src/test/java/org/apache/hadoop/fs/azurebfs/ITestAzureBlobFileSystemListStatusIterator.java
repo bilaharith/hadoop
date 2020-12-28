@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -46,12 +46,19 @@ import static org.apache.hadoop.test.LambdaTestUtils.intercept;
 /**
  * Test listStatus operation.
  */
-public class ITestAzureBlobFileSystemListStatusIterator extends
-    AbstractAbfsIntegrationTest {
+public class ITestAzureBlobFileSystemListStatusIterator
+    extends AbstractAbfsIntegrationTest {
   private static final int TEST_FILES_NUMBER = 100;
 
   public ITestAzureBlobFileSystemListStatusIterator() throws Exception {
     super();
+  }
+
+  @Test
+  public void testListPath1() throws Exception {
+    for(int i=0;i<25;i++){
+      testListPath();
+    }
   }
 
   @Test
@@ -81,10 +88,10 @@ public class ITestAzureBlobFileSystemListStatusIterator extends
 
     AzureBlobFileSystemStore abfsStore = getAbfsStore(fs);
     abfsStore.getAbfsConfiguration().setListMaxResults(10);
-    RemoteIterator<FileStatus> fsIt = fs.listStatusIterator(new Path(
-        "user/bith/testRoot"));
+    RemoteIterator<FileStatus> fsIt = fs
+        .listStatusIterator(new Path("user/bith/testRoot"));
     int i = 0;
-    while(fsIt.hasNext()){
+    while (fsIt.hasNext()) {
       FileStatus fileStatus = fsIt.next();
       String pathStr = fileStatus.getPath().toString();
       System.out.println(pathStr.substring(pathStr.lastIndexOf("/")));
