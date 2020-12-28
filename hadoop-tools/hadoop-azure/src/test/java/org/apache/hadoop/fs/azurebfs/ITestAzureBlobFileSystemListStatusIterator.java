@@ -85,8 +85,9 @@ public class ITestAzureBlobFileSystemListStatusIterator extends
         "user/bith/testRoot"));
     int i = 0;
     while(fsIt.hasNext()){
-      FileStatus a = fsIt.next();
-      System.out.println(a.getPath().toString().substring(50));
+      FileStatus fileStatus = fsIt.next();
+      String pathStr = fileStatus.getPath().toString();
+      System.out.println(pathStr.substring(pathStr.lastIndexOf("/")));
       i++;
     }
     assertEquals(TEST_FILES_NUMBER, i);
